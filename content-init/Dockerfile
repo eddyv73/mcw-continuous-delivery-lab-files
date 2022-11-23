@@ -11,4 +11,5 @@ RUN npm install
 # Copy the rest of the sources
 COPY . /usr/src/app
 # Start the application
+# Testing
 CMD [ "npm", "start" ]

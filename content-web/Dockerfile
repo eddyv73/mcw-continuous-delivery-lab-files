@@ -15,6 +15,7 @@ COPY package.json /usr/src/app/
 # Run the NPM install command to build the application
 RUN npm install
 # Copy the rest of the sources
+# kdkdk
 COPY . /usr/src/app
 # Build the Angular Application
 RUN ng build 

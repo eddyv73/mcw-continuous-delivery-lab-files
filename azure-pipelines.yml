@@ -9,21 +9,55 @@ trigger:
 pool:
   vmImage: ubuntu-latest
 
-steps:
+stages:
+- stage: build
+  jobs:
+  - job: 'BuildAndPublish'
+    displayName: 'Build and Publish'
+    steps:
+    - task: DockerCompose@0
+      inputs:
+        containerregistrytype: 'Container Registry'
+        dockerRegistryEndpoint: 'GitHub Container Registry'
+        dockerComposeFile: '**/docker-compose.yml'
+        additionalDockerComposeFiles: 'build.docker-compose.yml'
+        action: 'Build services'
+        additionalImageTags: '$(Build.BuildNumber)'
+    - task: DockerCompose@0
+      inputs:
+        containerregistrytype: 'Container Registry'
+        dockerRegistryEndpoint: 'GitHub Container Registry'
+        dockerComposeFile: '**/docker-compose.yml'
+        additionalDockerComposeFiles: 'build.docker-compose.yml'
+        action: 'Push services'
+        additionalImageTags: '$(Build.BuildNumber)'    
 
-- task: DockerCompose@0
-  inputs:
-    containerregistrytype: 'Container Registry'
-    dockerRegistryEndpoint: 'GitHub Container Registry'
-    dockerComposeFile: '**/docker-compose.yml'
-    additionalDockerComposeFiles: 'build.docker-compose.yml'
-    action: 'Build services'
-    additionalImageTags: '$(Build.BuildNumber)'
-- task: DockerCompose@0
-  inputs:
-    containerregistrytype: 'Container Registry'
-    dockerRegistryEndpoint: 'GitHub Container Registry'
-    dockerComposeFile: '**/docker-compose.yml'
-    additionalDockerComposeFiles: 'build.docker-compose.yml'
-    action: 'Push services'
-    additionalImageTags: '$(Build.BuildNumber)'
+- stage: DeployProd
+  dependsOn: build
+  jobs:
+  - deployment: webapp
+    environment: production
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - powershell: |
+              (gc .\docker-compose.yml) `
+                -replace ':latest',':$(Build.BuildNumber)' | `
+                set-content .\docker-compose.yml
+                
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: 'Fabrikam-Azure' # <-- The service
+              scriptType: 'pscore'                # connection from step 14
+              scriptLocation: 'scriptPath'
+              scriptPath: './infrastructure/deploy-webapp.ps1'
+              workingDirectory: ./infrastructure
+              arguments: 'deploymentID'         # <-- This should be your custom
+            env:                       # lowercase three character 
+              CR_PAT: $(CR_PAT)  # prefix from an earlier exercise.
+                            # ^^^^^^
+                            # ||||||
+                            # The pipeline variable from step 15

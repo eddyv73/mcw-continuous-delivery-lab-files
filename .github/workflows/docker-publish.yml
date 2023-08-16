@@ -6,8 +6,8 @@ name: Docker
 # documentation.
 
 on:
-  schedule:
-    - cron: '40 18 * * *'
+  # schedule:
+  #   - cron: '40 18 * * *'
   push:
     branches-ignore:    # <-- Add this list property
       - '**'  
